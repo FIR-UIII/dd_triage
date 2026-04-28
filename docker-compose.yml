@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: flask_app
+    ports:
+      - "5000:5000"
+    environment:
+      - DD_URL=https://defectdojo.your-company.com
+      - DD_API_KEY=your_api_token_here
+      - FLASK_APP=app.py          # нужно для flask run (если используете)
+      - FLASK_ENV=development     # опционально
+    volumes:
+      - .:/app                    # для горячей перезагрузки кода
+    restart: unless-stopped
+    networks:
+      - flask_network
+
+networks:
+  flask_network:
+    driver: bridge

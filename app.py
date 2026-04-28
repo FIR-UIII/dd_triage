@@ -8,7 +8,7 @@ import dd_client
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
-# --- logging setup ---
+# тут буду логгировать
 os.makedirs("logs", exist_ok=True)
 _handler = logging.FileHandler(config.LOG_FILE, encoding="utf-8")
 _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
@@ -17,9 +17,7 @@ triage_log.setLevel(logging.INFO)
 triage_log.addHandler(_handler)
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
+# Задаем пути
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -43,11 +41,10 @@ def findings():
     for fid in ids:
         try:
             finding = dd_client.get_finding(int(fid))
-            # Try to enrich inline notes if not already present
-            inline_notes = finding.get("notes") or []
-            if not inline_notes:
-                inline_notes = dd_client.get_notes(int(fid))
-            finding["_notes"] = inline_notes
+            notes = finding.get("notes") or []
+            if not notes:
+                notes = dd_client.get_notes(int(fid))
+            finding["_notes"] = notes
             results.append({"ok": True, "finding": finding})
         except Exception as exc:
             results.append({"ok": False, "id": fid, "error": str(exc)})
@@ -55,10 +52,9 @@ def findings():
     return render_template("findings.html", results=results)
 
 
-# ---------------------------------------------------------------------------
-# API endpoints called by the front-end JS
-# ---------------------------------------------------------------------------
+# API для работы самой приложки (обработка запросов с фронта)
 
+# закрыть сработка как есть - разметка верная, в дд закрываем как FP
 @app.route("/api/accept/<int:finding_id>", methods=["POST"])
 def accept(finding_id):
     try:
@@ -69,7 +65,7 @@ def accept(finding_id):
         triage_log.error("ACCEPT ERROR | finding_id=%s | %s", finding_id, exc)
         return jsonify({"status": "error", "message": str(exc)}), 500
 
-
+# отклонить разметку - в дд ничего не пишем, записываем в лог
 @app.route("/api/reject/<int:finding_id>", methods=["POST"])
 def reject(finding_id):
     body = request.get_json(silent=True) or {}
@@ -79,7 +75,7 @@ def reject(finding_id):
     )
     return jsonify({"status": "ok", "message": "Отклонение записано в лог."})
 
-
+# принять но скорректировать - в дд закрываем как FP и добавляем свой комментарий
 @app.route("/api/correct/<int:finding_id>", methods=["POST"])
 def correct(finding_id):
     body = request.get_json(silent=True) or {}
@@ -101,4 +97,4 @@ def correct(finding_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000) # пока не дебаге, немаршрутизируемый интерфейс для запуска в образе
