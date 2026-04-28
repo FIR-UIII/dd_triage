@@ -1,5 +1,6 @@
   Структура проекта
 
+```
   dd_triage/
   ├── app.py              # Flask-приложение, маршруты
   ├── config.py           # Настройки из переменных окружения
@@ -10,19 +11,22 @@
   └── templates/
       ├── index.html      # Экран ввода ID
       └── findings.html   # Экран разбора сработок
+```
 
-  Запуск
+Запуск
 
-  pip install -r requirements.txt
+```
+pip install -r requirements.txt
 
-  # Задайте переменные окружения (или скопируйте .env.example → .env и используйте python-dotenv)
-  set DD_URL=https://defectdojo.your-company.com
-  set DD_API_KEY=your_token
+set DD_URL=https://defectdojo.your-company.com
+set DD_API_KEY=your_token
 
-  python app.py
+python app.py
+```
 
   Как работает
 
+```
   ┌──────────┬─────────────────────────────────────────────────────────────────────────┐
   │ Действие │                             Что происходит                              │
   ├──────────┼─────────────────────────────────────────────────────────────────────────┤
@@ -36,6 +40,7 @@
   - После любого действия карточка сработки затемняется и блокируется
   - В шапке отображается прогресс X / N обработано
   - Лог пишется в logs/triage.log с timestamp
+```
 
   Что нужно настроить
 
