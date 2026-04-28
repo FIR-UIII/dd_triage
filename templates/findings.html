@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DD Triage — Разбор сработок</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #0d1117; color: #c9d1d9; font-size: .92rem; }
+
+    /* Cards */
+    .finding-card { background: #161b22; border: 1px solid #30363d; margin-bottom: 1.5rem; border-radius: 8px; overflow: hidden; }
+    .finding-card.done { opacity: .45; pointer-events: none; }
+    .card-head { background: #21262d; border-bottom: 1px solid #30363d; padding: .75rem 1.1rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+    .card-body-custom { padding: 1rem 1.1rem; }
+
+    /* Severity badges */
+    .sev-critical { background:#b91c1c; color:#fff; }
+    .sev-high     { background:#c2410c; color:#fff; }
+    .sev-medium   { background:#a16207; color:#fff; }
+    .sev-low      { background:#15803d; color:#fff; }
+    .sev-info     { background:#1d4ed8; color:#fff; }
+    .sev-badge    { font-size:.72rem; padding:.25em .55em; border-radius:4px; text-transform:uppercase; font-weight:700; }
+
+    /* Status badge */
+    .status-badge { font-size:.72rem; padding:.22em .5em; border-radius:4px; border: 1px solid #30363d; color:#8b949e; }
+
+    /* Section labels */
+    .section-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:#6e7681; margin-bottom:.3rem; margin-top:.9rem; }
+
+    /* Notes */
+    .note-block { background:#0d1117; border-left:3px solid #30363d; padding:.5rem .8rem; border-radius:0 4px 4px 0; margin-bottom:.5rem; }
+    .note-author { font-size:.75rem; color:#8b949e; }
+
+    /* Description */
+    .desc-block { background:#0d1117; border-radius:6px; padding:.6rem .8rem; white-space:pre-wrap; word-break:break-word; max-height:200px; overflow-y:auto; }
+
+    /* Action area */
+    .action-row { display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-start; margin-top:1rem; padding-top:1rem; border-top:1px solid #21262d; }
+    .action-group { display:flex; flex-direction:column; gap:.35rem; }
+
+    /* Inputs in action area */
+    .action-input { background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:6px; padding:.35rem .6rem; font-size:.85rem; width:220px; }
+    .action-input:focus { outline:none; border-color:#58a6ff; }
+
+    /* Buttons */
+    .btn-accept  { background:#238636; border-color:#2ea043; color:#fff; font-size:.82rem; }
+    .btn-accept:hover  { background:#2ea043; color:#fff; }
+    .btn-reject  { background:#6e7681; border-color:#6e7681; color:#fff; font-size:.82rem; }
+    .btn-reject:hover  { background:#8b949e; color:#fff; }
+    .btn-correct { background:#1d4ed8; border-color:#2563eb; color:#fff; font-size:.82rem; }
+    .btn-correct:hover { background:#2563eb; color:#fff; }
+
+    /* Toast */
+    .toast-container { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; }
+    .toast-msg { min-width:260px; padding:.75rem 1rem; border-radius:8px; color:#fff; font-size:.85rem; margin-top:.5rem; animation: fadeIn .2s; }
+    .toast-ok  { background:#238636; }
+    .toast-err { background:#b91c1c; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Navbar */
+    .topbar { background:#161b22; border-bottom:1px solid #30363d; padding:.6rem 1.2rem; display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; }
+    .topbar a { color:#58a6ff; font-size:.85rem; text-decoration:none; }
+    .topbar a:hover { text-decoration:underline; }
+    .topbar .title { font-weight:600; font-size:1rem; color:#c9d1d9; }
+
+    /* Error card */
+    .err-card { background:#21262d; border:1px solid #6e2929; border-radius:8px; padding:.75rem 1rem; color:#f85149; margin-bottom:1rem; }
+
+    /* Progress */
+    .progress-bar-custom { height:4px; background:#238636; border-radius:2px; transition:width .3s; }
+    .progress-wrap { background:#21262d; border-radius:2px; overflow:hidden; margin-bottom:1.2rem; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="title">DD Triage</span>
+  <a href="/">← Новый список</a>
+  <span class="ms-auto text-secondary" style="font-size:.8rem" id="progress-label"></span>
+</div>
+
+<div class="container" style="max-width:900px">
+
+  <!-- Progress bar -->
+  <div class="progress-wrap">
+    <div class="progress-bar-custom" id="progress-bar" style="width:0%"></div>
+  </div>
+
+  {% set ok_count = results | selectattr('ok') | list | length %}
+  {% set err_count = results | rejectattr('ok') | list | length %}
+
+  <div class="d-flex gap-2 mb-3 align-items-center">
+    <span class="text-secondary">Итого: <b class="text-white">{{ results|length }}</b></span>
+    {% if err_count %}<span class="badge bg-danger">Ошибок: {{ err_count }}</span>{% endif %}
+  </div>
+
+  <!-- Error rows -->
+  {% for r in results if not r.ok %}
+    <div class="err-card">
+      <b>ID {{ r.id }}</b> — не удалось загрузить: {{ r.error }}
+    </div>
+  {% endfor %}
+
+  <!-- Finding cards -->
+  {% for r in results if r.ok %}
+    {% set f = r.finding %}
+    {% set sev = (f.severity or 'info') | lower %}
+    <div class="finding-card" id="card-{{ f.id }}">
+      <!-- Header -->
+      <div class="card-head">
+        <span class="sev-badge sev-{{ sev }}">{{ f.severity or 'N/A' }}</span>
+        <span class="fw-semibold" style="color:#e6edf3">{{ f.title }}</span>
+        <span class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+          <span class="status-badge">ID: {{ f.id }}</span>
+          {% if f.component_name %}
+            <span class="status-badge">{{ f.component_name }}{% if f.component_version %} {{ f.component_version }}{% endif %}</span>
+          {% endif %}
+          {% if f.active %}
+            <span class="status-badge" style="border-color:#2ea043;color:#3fb950;">Active</span>
+          {% else %}
+            <span class="status-badge">Closed</span>
+          {% endif %}
+          {% if f.false_p %}
+            <span class="status-badge" style="border-color:#8b949e;">False Positive</span>
+          {% endif %}
+        </span>
+      </div>
+
+      <!-- Body -->
+      <div class="card-body-custom">
+
+        <!-- Meta info -->
+        <div class="d-flex flex-wrap gap-3 mb-2" style="font-size:.8rem;color:#8b949e;">
+          {% if f.test and f.test.engagement and f.test.engagement.product %}
+            <span>Product: <span class="text-secondary">{{ f.test.engagement.product.name }}</span></span>
+          {% endif %}
+          {% if f.found_by %}
+            <span>Tool: <span class="text-secondary">{{ f.found_by | join(', ') }}</span></span>
+          {% endif %}
+          {% if f.cwe %}
+            <span>CWE-{{ f.cwe }}</span>
+          {% endif %}
+          {% if f.cvssv3_score %}
+            <span>CVSS: {{ f.cvssv3_score }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Description -->
+        {% if f.description %}
+          <div class="section-label">Описание</div>
+          <div class="desc-block font-monospace" style="font-size:.8rem">{{ f.description }}</div>
+        {% endif %}
+
+        <!-- Mitigation -->
+        {% if f.mitigation %}
+          <div class="section-label">Mitigation</div>
+          <div class="desc-block" style="font-size:.8rem;max-height:120px">{{ f.mitigation }}</div>
+        {% endif %}
+
+        <!-- Notes -->
+        {% set notes = f._notes %}
+        {% if notes %}
+          <div class="section-label">Комментарии ({{ notes | length }})</div>
+          {% for note in notes %}
+            <div class="note-block">
+              <div class="note-author mb-1">
+                {{ note.author.username if note.author else 'unknown' }}
+                {% if note.date %}&nbsp;·&nbsp;{{ note.date[:10] }}{% endif %}
+              </div>
+              <div style="white-space:pre-wrap;word-break:break-word">{{ note.entry }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="section-label">Комментарии</div>
+          <div class="text-secondary" style="font-size:.8rem">Нет комментариев.</div>
+        {% endif %}
+
+        <!-- Action row -->
+        <div class="action-row" id="actions-{{ f.id }}">
+
+          <!-- ACCEPT -->
+          <div class="action-group">
+            <button class="btn btn-accept btn-sm" onclick="doAccept({{ f.id }})">
+              ✓ Accept
+            </button>
+            <div style="font-size:.72rem;color:#6e7681">Закрыть как FP</div>
+          </div>
+
+          <!-- REJECT -->
+          <div class="action-group">
+            <div class="d-flex gap-1">
+              <input type="text" class="action-input" id="reject-reason-{{ f.id }}"
+                     placeholder="Обоснование отклонения…">
+              <button class="btn btn-reject btn-sm" onclick="doReject({{ f.id }})">
+                ✗ Reject
+              </button>
+            </div>
+            <div style="font-size:.72rem;color:#6e7681">Записать в лог, не отправлять в DD</div>
+          </div>
+
+          <!-- CORRECT -->
+          <div class="action-group">
+            <div class="d-flex gap-1">
+              <input type="text" class="action-input" id="correct-comment-{{ f.id }}"
+                     placeholder="Комментарий для DD…">
+              <button class="btn btn-correct btn-sm" onclick="doCorrect({{ f.id }})">
+                ✎ Correct
+              </button>
+            </div>
+            <div style="font-size:.72rem;color:#6e7681">Закрыть как FP + добавить комментарий</div>
+          </div>
+
+        </div><!-- /action-row -->
+      </div><!-- /card-body -->
+    </div><!-- /finding-card -->
+  {% endfor %}
+
+</div><!-- /container -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const totalCards = {{ ok_count }};
+let doneCount = 0;
+
+function updateProgress() {
+  const bar = document.getElementById('progress-bar');
+  const label = document.getElementById('progress-label');
+  const pct = totalCards ? Math.round(doneCount / totalCards * 100) : 0;
+  bar.style.width = pct + '%';
+  label.textContent = `${doneCount} / ${totalCards} обработано`;
+}
+updateProgress();
+
+function markDone(id) {
+  const card = document.getElementById('card-' + id);
+  if (card && !card.classList.contains('done')) {
+    card.classList.add('done');
+    doneCount++;
+    updateProgress();
+  }
+}
+
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast-msg ' + (ok ? 'toast-ok' : 'toast-err');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+async function apiCall(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+async function doAccept(id) {
+  const data = await apiCall(`/api/accept/${id}`, {});
+  toast(data.message, data.status === 'ok');
+  if (data.status === 'ok') markDone(id);
+}
+
+async function doReject(id) {
+  const reason = document.getElementById('reject-reason-' + id).value.trim();
+  if (!reason) {
+    toast('Введите обоснование отклонения.', false);
+    document.getElementById('reject-reason-' + id).focus();
+    return;
+  }
+  const data = await apiCall(`/api/reject/${id}`, { reason });
+  toast(data.message, data.status === 'ok');
+  if (data.status === 'ok') markDone(id);
+}
+
+async function doCorrect(id) {
+  const comment = document.getElementById('correct-comment-' + id).value.trim();
+  if (!comment) {
+    toast('Введите комментарий для DD.', false);
+    document.getElementById('correct-comment-' + id).focus();
+    return;
+  }
+  const data = await apiCall(`/api/correct/${id}`, { comment });
+  toast(data.message, data.status === 'ok');
+  if (data.status === 'ok') markDone(id);
+}
+</script>
+</body>
+</html>
