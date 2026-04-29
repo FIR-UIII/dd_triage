@@ -25,11 +25,11 @@ docker-compose up -d --build
 
 ##### Шаг 1. Загрузить finding по id из DD
 
-![alt text](media/1.png)
+<img src="media/1.png" alt="root" width="500" height="200" />
 
 ##### Шаг 2. Провести анализ и принять решение по статусу
 
-![alt text](media/2.png)
+<img src="media/2.png" alt="main" width="500" height="200" />
 
 ### Структура проекта
 
