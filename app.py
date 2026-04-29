@@ -71,7 +71,7 @@ def reject(finding_id):
     body = request.get_json(silent=True) or {}
     reason = (body.get("reason") or "").strip()
     triage_log.info(
-        "REJECT | finding_id=%s | reason=%r", finding_id, reason or "<no reason>"
+        "REJECT | finding_id=%s | комментарий_ИБ=%r", finding_id, reason or "<no reason>"
     )
     return jsonify({"status": "ok", "message": "Отклонение записано в лог."})
 
