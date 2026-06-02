@@ -67,6 +67,15 @@
     /* Error card */
     .err-card { background:#21262d; border:1px solid #6e2929; border-radius:8px; padding:.75rem 1rem; color:#f85149; margin-bottom:1rem; }
 
+    /* Triage result block */
+    .triage-block { background:#0d1117; border-left:3px solid #58a6ff; padding:.5rem .8rem; border-radius:0 4px 4px 0; margin-bottom:.5rem; }
+    .verdict-badge { font-size:.72rem; padding:.22em .55em; border-radius:4px; font-weight:700; text-transform:uppercase; }
+    .verdict-false-positive { background:#238636; color:#fff; }
+    .verdict-needs-review   { background:#a16207; color:#fff; }
+    .verdict-true-positive  { background:#b91c1c; color:#fff; }
+    .triage-action { font-size:.75rem; color:#8b949e; background:#21262d; padding:.2em .45em; border-radius:4px; }
+    .triage-conf   { font-size:.75rem; color:#8b949e; }
+
     /* Progress */
     .progress-bar-custom { height:4px; background:#238636; border-radius:2px; transition:width .3s; }
     .progress-wrap { background:#21262d; border-radius:2px; overflow:hidden; margin-bottom:1.2rem; }
@@ -174,6 +183,36 @@
         {% else %}
           <div class="section-label">Комментарии</div>
           <div class="text-secondary" style="font-size:.8rem">Нет комментариев.</div>
+        {% endif %}
+
+        <!-- Triage result -->
+        {% if f.triage_result %}
+          {% set tr = f.triage_result %}
+          <div class="section-label">Auto-triage</div>
+          <div class="triage-block">
+            <div class="d-flex gap-2 align-items-center mb-1 flex-wrap">
+              <span class="verdict-badge verdict-{{ tr.verdict or 'unknown' }}">
+                {{ tr.verdict or '—' }}
+              </span>
+              {% if tr.action %}
+                <span class="triage-action">{{ tr.action | replace('_', ' ') }}</span>
+              {% endif %}
+              {% if tr.confidence is not none %}
+                <span class="triage-conf">{{ (tr.confidence * 100) | int }}% уверенность</span>
+              {% endif %}
+            </div>
+            {% if tr.explanation %}
+              <div style="font-size:.82rem;color:#c9d1d9;white-space:pre-wrap;word-break:break-word">{{ tr.explanation }}</div>
+            {% endif %}
+            {% if tr.similar_finding_ids %}
+              <div style="font-size:.78rem;color:#8b949e;margin-top:.4rem">
+                Похожие сработки:
+                {% for sid in tr.similar_finding_ids %}
+                  <span class="status-badge ms-1">{{ sid }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
         {% endif %}
 
         <!-- Action row -->
