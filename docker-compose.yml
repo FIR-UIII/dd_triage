@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    env_file:
+      - .env
+    container_name: flask_app
+    ports:
+      - "5000:5000"
+    environment:
+      - DD_URL=https://ddojo.dev.rosatom.local
+      - FLASK_APP=app.py         
+      - FLASK_ENV=development     
+    volumes:
+      - .:/app                    
+    restart: unless-stopped
+    networks:
+      - flask_network
+
+networks:
+  flask_network:
+    driver: bridge

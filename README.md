@@ -1,47 +1,49 @@
-  Структура проекта
+### Установка и запуск
 
-```
-  dd_triage/
-  ├── app.py              # Flask-приложение, маршруты
-  ├── config.py           # Настройки из переменных окружения
-  ├── dd_client.py        # Клиент DefectDojo API
-  ├── requirements.txt
-  ├── .env.example        # Шаблон переменных окружения
-  ├── logs/               # Лог-файл triаge.log
-  └── templates/
-      ├── index.html      # Экран ввода ID
-      └── findings.html   # Экран разбора сработок
-```
-
-Запуск
-
+##### При локальном запуске не через контейнер изменить 
 ```
 pip install -r requirements.txt
 
-set DD_URL=https://defectdojo.your-company.com
-set DD_API_KEY=your_token
+# установить переменные окружения с данными ДД
+$env:DD_URL="https://defectdojo.your-company.com"
+$env:DD_API_KEY="your_token"
+export DD_URL="https://defectdojo.your-company.com"
+export DD_API_KEY="your_token"
 
+# запуск приложения
+# изменить в app.py в app.run (host="0.0.0.0"...) значение на host="127.0.0.1"
 python app.py
 ```
 
-  Как работает
-
+##### При локальном запуске через docker
 ```
-  ┌──────────┬─────────────────────────────────────────────────────────────────────────┐
-  │ Действие │                             Что происходит                              │
-  ├──────────┼─────────────────────────────────────────────────────────────────────────┤
-  │ Accept   │ PATCH /api/v2/findings/{id}/ → false_p=true, active=false, запись в лог │
-  ├──────────┼─────────────────────────────────────────────────────────────────────────┤
-  │ Reject   │ Только лог: REJECT | finding_id=… | reason=…, ничего в DD               │
-  ├──────────┼─────────────────────────────────────────────────────────────────────────┤
-  │ Correct  │ PATCH (FP) + POST /api/v2/findings/{id}/notes/ с вашим комментарием     │
-  └──────────┴─────────────────────────────────────────────────────────────────────────┘
-
-  - После любого действия карточка сработки затемняется и блокируется
-  - В шапке отображается прогресс X / N обработано
-  - Лог пишется в logs/triage.log с timestamp
+создать .env файл на основе .env.example
+docker-compose up -d --build
 ```
 
-  Что нужно настроить
+### Как работать с приложением
 
-  Скопируйте .env.example в .env, укажите реальный DD_URL и DD_API_KEY (токен берётся из профиля DD: User → API v2 Key).
+##### Шаг 1. Загрузить finding по id из DD
+
+<img src="media/1.png" alt="root" width="450" height="350" />
+
+##### Шаг 2. Провести анализ и принять решение по статусу
+
+<img src="media/2.png" alt="main" width="450" height="350" />
+
+### Структура проекта
+
+```
+dd_triage/
+├── app.py              # Flask-приложение, маршруты
+├── config.py           # Настройки из переменных окружения
+├── dd_client.py        # Клиент DefectDojo API
+├── requirements.txt
+├── .env.example        # Шаблон переменных окружения
+├── logs/               # Лог-файл triаge.log
+└── templates/
+    ├── index.html      # Экран ввода ID
+    └── findings.html   # Экран разбора сработок
+```
+
+Регулярка для усечение лога ^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d{3}\s+\[[^\]]+\]\s+
