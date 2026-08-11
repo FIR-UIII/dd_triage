@@ -33,8 +33,9 @@ triage_log.addHandler(_handler)
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        prefixurl = "https://ddojo.dev.rosatom.local/finding/"
         raw = request.form.get("finding_ids", "")
-        ids = [line.strip() for line in raw.splitlines() if line.strip().isdigit()]
+        ids = [line.strip().removeprefix(prefixurl) for line in raw.splitlines() if line.strip().removeprefix(prefixurl).isdigit()]
         if not ids:
             return render_template("index.html", error="Введите хотя бы один числовой ID.")
         session.pop("upload_id", None)
@@ -134,7 +135,6 @@ def findings():
     for fid in ids:
         try:
             finding = dd_client.get_finding(int(fid))
-
             inline_notes = finding.get("notes") or []
             if not inline_notes:
                 inline_notes = dd_client.get_notes(int(fid))

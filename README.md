@@ -23,13 +23,16 @@ docker-compose up -d --build
 
 ### Как работать с приложением
 
-##### Шаг 1. Загрузить finding по id из DD
+##### Шаг 1. Загрузить finding по id из DD (понимает указание урл на finding вида https://ddojo.dev.rosatom.local/finding/<id>)
 
-<img src="media/1.png" alt="root" width="450" height="350" />
+![alt text](media/1.png)
 
 ##### Шаг 2. Провести анализ и принять решение по статусу
 
-<img src="media/2.png" alt="main" width="450" height="350" />
+![alt text](media/2-new-1.png)
+
+Если в finding не будет указанн комментарий, то его нельзя подтвердить, кнопки accept и correct будут недоступны
+![alt text](media/2-new-2.png)
 
 ### Структура проекта
 

@@ -112,10 +112,14 @@
   {% endfor %}
 
   <!-- Finding cards -->
-  {% for r in results if r.ok %}
+  {% for r in results if r.ok and r.finding.active %}
     {% set f = r.finding %}
     {% set sev = (f.severity or 'info') | lower %}
-    <div class="finding-card" id="card-{{ f.id }}">
+      {% if f.active %}
+        <div class="finding-card" id="card-{{ f.id }}">
+      {% else %}
+        <div class="finding-card done" id="card-{{ f.id }}">
+      {% endif %}   
       <!-- Header -->
       <div class="card-head">
         <span class="sev-badge sev-{{ sev }}">{{ f.severity or 'N/A' }}</span>
@@ -154,6 +158,17 @@
             <span>CVSS: {{ f.cvssv3_score }}</span>
           {% endif %}
         </div>
+
+        <!-- id & test url-->
+        {% if f.id %}
+        <div class="section-label">Finding: <a href="https://ddojo.dev.rosatom.local/finding/{{ f.id }}" target="_blank">{{ f.id }}</a></div>
+        {% endif %} 
+
+        <!-- File path-->
+        {% if f.file_path %}
+        <div class="section-label">Путь к файлу:</div>
+        <div class="desc-block font-monospace" style="font-size:.8rem">{{ f.file_path }}</div>
+        {% endif %}
 
         <!-- Description -->
         {% if f.description %}
@@ -219,18 +234,36 @@
         <div class="action-row" id="actions-{{ f.id }}">
 
           <!-- ACCEPT -->
+          
+          {% if f._notes %} 
           <div class="action-group">
             <button class="btn btn-accept btn-sm" onclick="doAccept({{ f.id }})">
               ✓ Accept
             </button>
             <div style="font-size:.72rem;color:#6e7681">Закрыть как FP</div>
           </div>
+          {% else %}
+            <div class="section-label"><span class="status-badge" style="border-color:#f00c3d;color:#f30909;">Нет комментария</span></div>
+            <!--
+            <div class="d-flex gap-1">
+              <button class="btn btn-reject btn-sm" onclick="doReject({{ f.id }})">
+                ✗ Нет комментария
+              </button>
+            </div>
+            -->
+          {% endif %}
 
           <!-- REJECT -->
           <div class="action-group">
             <div class="d-flex gap-1">
+              {% if f._notes %} 
               <input type="text" class="action-input" id="reject-reason-{{ f.id }}"
                      placeholder="Обоснование отклонения…">
+              {% else %}
+              <input type="text" class="action-input" id="reject-reason-{{ f.id }}"
+                     placeholder="Обоснование отклонения…" value="Отсутствует обоснование ложной сработки">
+              {% endif %}
+
               <button class="btn btn-reject btn-sm" onclick="doReject({{ f.id }})">
                 ✗ Reject
               </button>
