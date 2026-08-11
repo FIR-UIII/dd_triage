@@ -121,11 +121,27 @@ def upload():
     return redirect(url_for("findings"))
 
 
+def _uploaded_finding(finding_id: int) -> dict | None:
+    """Найти сработку из загруженного JSONL текущей сессии (None — если это не JSON-сценарий)."""
+    upload_id = session.get("upload_id")
+    if not upload_id:
+        return None
+    for r in _upload_store.get(upload_id) or []:
+        if r.get("ok") and (r.get("finding") or {}).get("id") == finding_id:
+            return r["finding"]
+    return None
+
+
+def _json_comment(finding: dict) -> str:
+    """Комментарий из JSON, который Accept применяет в DD."""
+    return ((finding.get("triage_result") or {}).get("explanation") or "").strip()
+
+
 @app.route("/findings")
 def findings():
     upload_id = session.get("upload_id")
     if upload_id and upload_id in _upload_store:
-        return render_template("findings.html", results=_upload_store[upload_id])
+        return render_template("findings.html", results=_upload_store[upload_id], mode="upload")
 
     ids = session.get("finding_ids", [])
     if not ids:
@@ -143,16 +159,30 @@ def findings():
         except Exception as exc:
             results.append({"ok": False, "id": fid, "error": str(exc)})
 
-    return render_template("findings.html", results=results)
+    return render_template("findings.html", results=results, mode="api")
 
 
 # API для работы самой приложки (обработка запросов с фронта)
 
 # закрыть сработка как есть - разметка верная, в дд закрываем как FP
+# в сценарии загрузки JSON дополнительно переносим в DD комментарий из файла
 @app.route("/api/accept/<int:finding_id>", methods=["POST"])
 def accept(finding_id):
+    uploaded = _uploaded_finding(finding_id)
+    comment = _json_comment(uploaded) if uploaded is not None else ""
     try:
         dd_client.close_as_false_positive(finding_id)
+        if comment:
+            dd_client.add_note(finding_id, comment)
+            triage_log.info(
+                "ACCEPT | finding_id=%s | closed as false-positive + note from JSON | comment=%r",
+                finding_id,
+                comment,
+            )
+            return jsonify({
+                "status": "ok",
+                "message": "Закрыто как false-positive, комментарий из JSON добавлен.",
+            })
         triage_log.info("ACCEPT | finding_id=%s | closed as false-positive", finding_id)
         return jsonify({"status": "ok", "message": "Сработка закрыта как false-positive."})
     except Exception as exc:
