@@ -82,7 +82,7 @@
   {% endfor %}
 
   <!-- Finding cards -->
-  {% for r in results if r.ok and r.finding.active %}
+  {% for r in results if r.ok %}
     {% set f = r.finding %}
     {% set sev = (f.severity or 'info') | lower %}
     {% set tr = f.triage_result or {} %}
@@ -112,11 +112,24 @@
           {% endif %}
           {% if f.active %}
             <span class="status-badge status-badge-active">Active</span>
-          {% else %}
+          {% endif %}
+          {% if f.is_mitigated %}
+            <span class="status-badge">Mitigated</span>
+          {% endif %}
+          {% if not f.active and not f.is_mitigated %}
             <span class="status-badge">Closed</span>
           {% endif %}
           {% if f.false_p %}
             <span class="status-badge">False Positive</span>
+          {% endif %}
+          {% if f.out_of_scope %}
+            <span class="status-badge">Out of Scope</span>
+          {% endif %}
+          {% if f.duplicate %}
+            <span class="status-badge">Duplicate</span>
+          {% endif %}
+          {% if f.risk_accepted %}
+            <span class="status-badge">Risk Accepted</span>
           {% endif %}
         </span>
       </div>
